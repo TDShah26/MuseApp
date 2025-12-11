@@ -23,13 +23,12 @@
     </div>
   </div>
   <script type="module">
-    // Import the @yume-chan/adb libraries
-    import { AdbDaemonWebUsbDeviceManager } from "https://esm.sh/@yume-chan/adb-daemon-webusb@0.0.24";
-    import { AdbDaemonTransport, Adb } from "https://esm.sh/@yume-chan/adb@0.0.24";
-    import { ConsumableWritableStream } from "https://esm.sh/@yume-chan/stream-extra@0.0.24";
+    // Using unpkg CDN for @yume-chan/adb libraries
+    import { AdbDaemonWebUsbDeviceManager } from "https://unpkg.com/@yume-chan/adb-daemon-webusb@0.0.24/esm/index.js";
+    import { AdbDaemonTransport, Adb } from "https://unpkg.com/@yume-chan/adb@0.0.24/esm/index.js";
+    import { Consumable, ReadableStream, WritableStream } from "https://unpkg.com/@yume-chan/stream-extra@0.0.24/esm/index.js";
     
     // --- CONFIG ---
-    // REPLACE THIS WITH YOUR EXACT PACKAGE NAME
     const PACKAGE_NAME = "com.example.muse"; 
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
     const CMD = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
@@ -55,59 +54,83 @@
     connectBtn.onclick = async () => {
       try {
         log("Opening device picker...");
+        connectBtn.disabled = true;
         
-        // 1. Request USB device
+        // 1. Get device manager
         const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+        
+        // 2. Request device
         const device = await manager.requestDevice();
+        log(`Device selected: ${device.serial}`);
         
-        log("Device selected. Connecting...");
-        
-        // 2. Connect to device
+        // 3. Connect
+        log("Connecting to device...");
         const connection = await device.connect();
         
-        // 3. Create transport
+        // 4. Authenticate
+        log("Authenticating...");
+        const credentialStore = {
+          async *iterateKeys() {
+            // No stored keys
+          },
+          async generateKey() {
+            // Generate RSA key pair
+            const { privateKey, publicKey } = await crypto.subtle.generateKey(
+              {
+                name: "RSASSA-PKCS1-v1_5",
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+                hash: "SHA-1"
+              },
+              true,
+              ["sign", "verify"]
+            );
+            return { privateKey, publicKey };
+          }
+        };
+        
         const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
           connection,
-          credentialStore: {
-            // Simple credential store that generates keys
-            async *iterateKeys() {},
-            async generateKey() {
-              const { privateKey, publicKey } = await crypto.subtle.generateKey(
-                { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([0x01, 0x00, 0x01]), hash: "SHA-1" },
-                true,
-                ["sign", "verify"]
-              );
-              return { privateKey, publicKey };
-            }
-          }
+          credentialStore
         });
         
-        // 4. Create ADB instance
+        // 5. Create ADB instance
         const adb = new Adb(transport);
+        log("Connected! Running command...");
+        log(`$ ${CMD}`);
         
-        log("Device connected. Sending command...");
-        log(`Executing: ${CMD}`);
-        
-        // 5. Run shell command
+        // 6. Execute command
         const output = await adb.subprocess.spawnAndWaitLegacy(CMD);
         
-        log("Response: " + (output || "(no output)"));
         log("---------------------------");
-        log("SUCCESS! Permission granted.", false);
-        log("You can unplug your phone now.", false);
-        
-        alert("Success! App unlocked.");
+        if (output) {
+          log(`Output: ${output}`);
+        } else {
+          log("Command executed (no output)");
+        }
+        log("---------------------------");
+        log("✓ SUCCESS! Permission granted.", false);
+        log("You can now unplug your device.", false);
         
         // Cleanup
         await adb.close();
         
+        alert("✓ Success! App unlocked. You can unplug your device now.");
+        connectBtn.disabled = false;
+        
       } catch (err) {
         console.error(err);
-        if (err.message && err.message.includes("claimInterface")) {
-          log("ERROR: Device busy! Run `adb kill-server` in terminal.", true);
-        } else if (err.message && err.message.includes("No device selected")) {
+        connectBtn.disabled = false;
+        
+        if (err.name === "NotFoundError") {
           log("Connection cancelled by user.", false);
+        } else if (err.message?.includes("claimInterface")) {
+          log("ERROR: Device is busy!", true);
+          log("Fix: Run 'adb kill-server' in terminal and try again.", true);
+        } else if (err.message?.includes("Unable to claim interface")) {
+          log("ERROR: Cannot access device!", true);
+          log("Fix: Disconnect device, run 'adb kill-server', reconnect and try again.", true);
         } else {
           log(`ERROR: ${err.message || err}`, true);
         }
