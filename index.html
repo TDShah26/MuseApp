@@ -2,42 +2,41 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Unlock Focus Mode</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900 font-sans">
-
   <div class="max-w-3xl mx-auto px-6 py-12 space-y-8">
     <header class="text-center space-y-2">
       <h1 class="text-3xl font-bold text-slate-900">Unlock Focus Mode</h1>
       <p class="text-slate-600">Connect your phone to enable the app.</p>
     </header>
-
     <div class="bg-white p-8 rounded-2xl shadow-sm ring-1 ring-slate-200 text-center space-y-6">
       <button id="connectBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all disabled:opacity-50">
         Connect Android Device
       </button>
-
       <div class="text-left space-y-2">
         <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Log</label>
         <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
       </div>
     </div>
   </div>
-
   <script type="module">
-    // Load 'webadb' from NPM via esm.sh (Bundled)
-    import webadb from "https://esm.sh/webadb?bundle";
-
+    // Import the @yume-chan/adb libraries
+    import { AdbDaemonWebUsbDeviceManager } from "https://esm.sh/@yume-chan/adb-daemon-webusb@0.0.24";
+    import { AdbDaemonTransport, Adb } from "https://esm.sh/@yume-chan/adb@0.0.24";
+    import { ConsumableWritableStream } from "https://esm.sh/@yume-chan/stream-extra@0.0.24";
+    
     // --- CONFIG ---
     // REPLACE THIS WITH YOUR EXACT PACKAGE NAME
     const PACKAGE_NAME = "com.example.muse"; 
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
     const CMD = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
-
+    
     const consoleDiv = document.getElementById("console");
     const connectBtn = document.getElementById("connectBtn");
-
+    
     const log = (msg, isError = false) => {
       const div = document.createElement("div");
       div.textContent = `> ${msg}`;
@@ -45,50 +44,70 @@
       consoleDiv.appendChild(div);
       consoleDiv.scrollTop = consoleDiv.scrollHeight;
     };
-
+    
     if (!navigator.usb) {
       log("Error: WebUSB not supported. Use Chrome or Edge.", true);
       connectBtn.disabled = true;
     } else {
       log("System Ready. Click Connect.");
     }
-
+    
     connectBtn.onclick = async () => {
       try {
         log("Opening device picker...");
         
-        // 1. Connect using the simple WebADB API
-        const adb = await webadb.create();
+        // 1. Request USB device
+        const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+        const device = await manager.requestDevice();
+        
+        log("Device selected. Connecting...");
+        
+        // 2. Connect to device
+        const connection = await device.connect();
+        
+        // 3. Create transport
+        const transport = await AdbDaemonTransport.authenticate({
+          serial: device.serial,
+          connection,
+          credentialStore: {
+            // Simple credential store that generates keys
+            async *iterateKeys() {},
+            async generateKey() {
+              const { privateKey, publicKey } = await crypto.subtle.generateKey(
+                { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([0x01, 0x00, 0x01]), hash: "SHA-1" },
+                true,
+                ["sign", "verify"]
+              );
+              return { privateKey, publicKey };
+            }
+          }
+        });
+        
+        // 4. Create ADB instance
+        const adb = new Adb(transport);
         
         log("Device connected. Sending command...");
         log(`Executing: ${CMD}`);
-
-        // 2. Run Command
-        // webadb.shell() returns a proxy that lets us read the output
-        const shell = await adb.shell(CMD);
         
-        // 3. Read Output
-        const decoder = new TextDecoder();
-        let output = "";
+        // 5. Run shell command
+        const output = await adb.subprocess.spawnAndWaitLegacy(CMD);
         
-        // Use the library's reader
-        const reader = shell.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          output += decoder.decode(value);
-        }
-
-        log("Response: " + output);
+        log("Response: " + (output || "(no output)"));
         log("---------------------------");
         log("SUCCESS! Permission granted.", false);
         log("You can unplug your phone now.", false);
+        
         alert("Success! App unlocked.");
-
+        
+        // Cleanup
+        await adb.close();
+        
       } catch (err) {
         console.error(err);
         if (err.message && err.message.includes("claimInterface")) {
           log("ERROR: Device busy! Run `adb kill-server` in terminal.", true);
+        } else if (err.message && err.message.includes("No device selected")) {
+          log("Connection cancelled by user.", false);
         } else {
           log(`ERROR: ${err.message || err}`, true);
         }
