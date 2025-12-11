@@ -12,35 +12,38 @@
       <h1 class="text-3xl font-bold text-slate-900">Unlock Focus Mode</h1>
       <p class="text-slate-600">Connect your phone to enable the app.</p>
     </header>
+
     <div class="bg-white p-8 rounded-2xl shadow-sm ring-1 ring-slate-200 text-center space-y-6">
       <button id="connectBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all disabled:opacity-50">
         Connect Android Device
       </button>
+
       <div class="text-left space-y-2">
         <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Log</label>
         <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
       </div>
     </div>
+
     <div class="text-center text-sm text-slate-500 space-y-2 mt-4">
       <p>⚠️ Make sure USB debugging is enabled on your device</p>
       <p>💡 Accept the USB debugging prompt on your phone</p>
       <p>🔧 If it fails, run <code class="bg-slate-200 px-2 py-1 rounded">adb kill-server</code> in terminal</p>
     </div>
   </div>
-  
+
   <script type="module">
-    // Using the library's published ESM bundle directly (no CDN transpilation)
-    import { Adb, AdbDaemonTransport } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@2.1.0/dist/esm/index.js";
-    import { AdbDaemonWebUsbDeviceManager } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@2.1.0/dist/esm/index.js";
-    
+    // Import ESM builds via +esm helper so paths always exist
+    import { Adb, AdbDaemonTransport } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@2.1.0/+esm";
+    import { AdbDaemonWebUsbDeviceManager } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@2.1.0/+esm";
+
     // --- CONFIG ---
-    const PACKAGE_NAME = "com.example.muse"; 
+    const PACKAGE_NAME = "com.example.muse";
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
     const CMD = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
-    
+
     const consoleDiv = document.getElementById("console");
     const connectBtn = document.getElementById("connectBtn");
-    
+
     const log = (msg, isError = false) => {
       const div = document.createElement("div");
       div.textContent = `> ${msg}`;
@@ -48,76 +51,88 @@
       consoleDiv.appendChild(div);
       consoleDiv.scrollTop = consoleDiv.scrollHeight;
     };
-    
+
     if (!navigator.usb) {
       log("Error: WebUSB not supported. Use Chrome or Edge.", true);
       connectBtn.disabled = true;
     } else {
       log("System Ready. Click Connect.");
     }
-    
+
     connectBtn.onclick = async () => {
       let adb = null;
       try {
         log("Opening device picker...");
         connectBtn.disabled = true;
-        
-        // Use the modern API
+
         const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
         if (!manager) {
           log("ERROR: WebUSB not available", true);
           connectBtn.disabled = false;
           return;
         }
-        
+
         log("Requesting device...");
         const device = await manager.requestDevice();
-        
+
         if (!device) {
           log("No device selected.");
           connectBtn.disabled = false;
           return;
         }
-        
+
         log(`Device selected: ${device.serial}`);
         log("Connecting...");
-        
+
         const connection = await device.connect();
         log("Authenticating...");
         log("⚠️ CHECK YOUR PHONE for USB debugging authorization!");
-        
-        // Authenticate and create ADB instance
+
+        const credentialStore = {
+          // In a real app you’d persist this (IndexedDB, localStorage, etc.)
+          async *iterateKeys() {
+            const stored = localStorage.getItem("adb_private_key");
+            if (stored) {
+              const keyData = Uint8Array.from(atob(stored), c => c.charCodeAt(0)).buffer;
+              yield keyData;
+            }
+          },
+          async generateKey() {
+            const keyPair = await crypto.subtle.generateKey(
+              {
+                name: "RSASSA-PKCS1-v1_5",
+                modulusLength: 2048,
+                publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+                hash: { name: "SHA-1" },
+              },
+              true,
+              ["sign", "verify"]
+            );
+
+            const pkcs8 = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+            const bytes = new Uint8Array(pkcs8);
+            let binary = "";
+            for (const b of bytes) binary += String.fromCharCode(b);
+            localStorage.setItem("adb_private_key", btoa(binary));
+
+            return pkcs8;
+          },
+        };
+
         const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
           connection,
-          credentialStore: {
-            async *iterateKeys() {
-              // No stored keys
-            },
-            async generateKey() {
-              const keyPair = await crypto.subtle.generateKey(
-                {
-                  name: "RSASSA-PKCS1-v1_5",
-                  modulusLength: 2048,
-                  publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-                  hash: { name: "SHA-1" }
-                },
-                true,
-                ["sign", "verify"]
-              );
-              return keyPair;
-            }
-          }
+          credentialStore,
         });
+
         adb = new Adb(transport);
-        
+
         log("✓ Connected successfully!");
         log("---------------------------");
         log(`Executing: ${CMD}`);
-        
-        // Run shell command
+
         const output = await adb.subprocess.spawnAndWaitLegacy(CMD);
-        
+
         log("---------------------------");
         if (output && output.trim()) {
           log(`Output: ${output.trim()}`);
@@ -125,14 +140,13 @@
           log("Command executed successfully");
         }
         log("---------------------------");
-        log("✓ SUCCESS! Permission granted.", false);
-        log("✓ You can now disconnect your device.", false);
-        
+        log("✓ SUCCESS! Permission granted.");
+        log("✓ You can now disconnect your device.");
+
         alert("✓ Success! Permission granted.\n\nYou can disconnect your device and use the app now.");
-        
       } catch (err) {
         console.error("Full error:", err);
-        
+
         if (err.name === "NotFoundError" || err.message?.includes("cancelled")) {
           log("Device selection cancelled.", false);
         } else if (err.message?.includes("claim") || err.message?.includes("interface")) {
