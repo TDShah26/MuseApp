@@ -28,22 +28,9 @@
     </div>
   </div>
   
-  <!-- Use Skypack for proper ESM resolution -->
-  <script type="importmap">
-  {
-    "imports": {
-      "@yume-chan/adb": "https://cdn.skypack.dev/@yume-chan/adb@0.0.24",
-      "@yume-chan/adb-daemon-webusb": "https://cdn.skypack.dev/@yume-chan/adb-daemon-webusb@0.0.24",
-      "@yume-chan/stream-extra": "https://cdn.skypack.dev/@yume-chan/stream-extra@0.0.24",
-      "@yume-chan/struct": "https://cdn.skypack.dev/@yume-chan/struct@0.0.24",
-      "@yume-chan/event": "https://cdn.skypack.dev/@yume-chan/event@0.0.24"
-    }
-  }
-  </script>
-  
   <script type="module">
-    import { AdbDaemonWebUsbDeviceManager } from "@yume-chan/adb-daemon-webusb";
-    import { AdbDaemonTransport, Adb } from "@yume-chan/adb";
+    import { AdbDaemonWebUsbDeviceManager } from "https://cdn.skypack.dev/@yume-chan/adb-daemon-webusb@0.0.24";
+    import { AdbDaemonTransport, Adb } from "https://cdn.skypack.dev/@yume-chan/adb@0.0.24";
     
     // --- CONFIG ---
     const PACKAGE_NAME = "com.example.muse"; 
@@ -122,7 +109,7 @@
         };
         
         log("Authenticating with device...");
-        log("(Check your phone for USB debugging prompt)");
+        log("⚠️ CHECK YOUR PHONE for USB debugging prompt!");
         
         const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
