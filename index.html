@@ -29,9 +29,9 @@
   </div>
   
   <script type="module">
-    // Using the modern Tango API with proper CDN
-    import { AdbDaemonTransport } from "https://cdn.skypack.dev/@yume-chan/adb@2.1.0";
-    import { AdbDaemonWebUsbDeviceManager } from "https://cdn.skypack.dev/@yume-chan/adb-daemon-webusb@2.1.0";
+    // Using the modern Tango API with a CDN that supports ESM exports
+    import { Adb, AdbDaemonTransport } from "https://esm.sh/@yume-chan/adb@2.1.0?target=es2020";
+    import { AdbDaemonWebUsbDeviceManager } from "https://esm.sh/@yume-chan/adb-daemon-webusb@2.1.0?target=es2020";
     
     // --- CONFIG ---
     const PACKAGE_NAME = "com.example.muse"; 
@@ -87,7 +87,7 @@
         log("⚠️ CHECK YOUR PHONE for USB debugging authorization!");
         
         // Authenticate and create ADB instance
-        adb = await AdbDaemonTransport.authenticate({
+        const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
           connection,
           credentialStore: {
@@ -109,6 +109,7 @@
             }
           }
         });
+        adb = new Adb(transport);
         
         log("✓ Connected successfully!");
         log("---------------------------");
