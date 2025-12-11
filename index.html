@@ -30,7 +30,7 @@
   
   <script type="module">
     // Using the modern Tango API with proper CDN
-    import { Adb, AdbDaemonTransport } from "https://cdn.skypack.dev/@yume-chan/adb@2.1.0";
+    import { AdbDaemonTransport } from "https://cdn.skypack.dev/@yume-chan/adb@2.1.0";
     import { AdbDaemonWebUsbDeviceManager } from "https://cdn.skypack.dev/@yume-chan/adb-daemon-webusb@2.1.0";
     
     // --- CONFIG ---
@@ -87,7 +87,7 @@
         log("⚠️ CHECK YOUR PHONE for USB debugging authorization!");
         
         // Authenticate and create ADB instance
-        const transport = await AdbDaemonTransport.authenticate({
+        adb = await AdbDaemonTransport.authenticate({
           serial: device.serial,
           connection,
           credentialStore: {
@@ -109,8 +109,6 @@
             }
           }
         });
-        
-        adb = new Adb(transport);
         
         log("✓ Connected successfully!");
         log("---------------------------");
