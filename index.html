@@ -29,9 +29,9 @@
   </div>
   
   <script type="module">
-    // Using the modern Tango API with a CDN that ships native ESM
-    import { Adb, AdbDaemonTransport } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@2.1.0/+esm";
-    import { AdbDaemonWebUsbDeviceManager } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@2.1.0/+esm";
+    // Using the library's published ESM bundle directly (no CDN transpilation)
+    import { Adb, AdbDaemonTransport } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@2.1.0/dist/esm/index.js";
+    import { AdbDaemonWebUsbDeviceManager } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@2.1.0/dist/esm/index.js";
     
     // --- CONFIG ---
     const PACKAGE_NAME = "com.example.muse"; 
