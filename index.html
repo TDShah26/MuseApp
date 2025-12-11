@@ -21,12 +21,15 @@
         <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
       </div>
     </div>
+    <div class="text-center text-sm text-slate-500 space-y-1">
+      <p>⚠️ Make sure USB debugging is enabled on your device</p>
+      <p>💡 If connection fails, run <code class="bg-slate-200 px-2 py-1 rounded">adb kill-server</code> in terminal</p>
+    </div>
   </div>
   <script type="module">
-    // Using unpkg CDN for @yume-chan/adb libraries
-    import { AdbDaemonWebUsbDeviceManager } from "https://unpkg.com/@yume-chan/adb-daemon-webusb@0.0.24/esm/index.js";
-    import { AdbDaemonTransport, Adb } from "https://unpkg.com/@yume-chan/adb@0.0.24/esm/index.js";
-    import { Consumable, ReadableStream, WritableStream } from "https://unpkg.com/@yume-chan/stream-extra@0.0.24/esm/index.js";
+    // Import from jsdelivr with specific version that works
+    import * as AdbWebUsb from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@0.0.24/+esm";
+    import * as Adb from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@0.0.24/+esm";
     
     // --- CONFIG ---
     const PACKAGE_NAME = "com.example.muse"; 
@@ -51,88 +54,92 @@
       log("System Ready. Click Connect.");
     }
     
+    // Simple credential store
+    const credentialStore = {
+      async *iterateKeys() {},
+      async generateKey() {
+        const { privateKey, publicKey } = await crypto.subtle.generateKey(
+          {
+            name: "RSASSA-PKCS1-v1_5",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+            hash: "SHA-1"
+          },
+          true,
+          ["sign", "verify"]
+        );
+        return { privateKey, publicKey };
+      }
+    };
+    
     connectBtn.onclick = async () => {
       try {
         log("Opening device picker...");
         connectBtn.disabled = true;
         
-        // 1. Get device manager
-        const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
-        
-        // 2. Request device
+        const manager = AdbWebUsb.AdbDaemonWebUsbDeviceManager.BROWSER;
         const device = await manager.requestDevice();
-        log(`Device selected: ${device.serial}`);
         
-        // 3. Connect
-        log("Connecting to device...");
+        if (!device) {
+          log("No device selected.");
+          connectBtn.disabled = false;
+          return;
+        }
+        
+        log(`Device: ${device.serial}`);
+        log("Connecting...");
+        
         const connection = await device.connect();
-        
-        // 4. Authenticate
         log("Authenticating...");
-        const credentialStore = {
-          async *iterateKeys() {
-            // No stored keys
-          },
-          async generateKey() {
-            // Generate RSA key pair
-            const { privateKey, publicKey } = await crypto.subtle.generateKey(
-              {
-                name: "RSASSA-PKCS1-v1_5",
-                modulusLength: 2048,
-                publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-                hash: "SHA-1"
-              },
-              true,
-              ["sign", "verify"]
-            );
-            return { privateKey, publicKey };
-          }
-        };
         
-        const transport = await AdbDaemonTransport.authenticate({
+        const transport = await Adb.AdbDaemonTransport.authenticate({
           serial: device.serial,
           connection,
           credentialStore
         });
         
-        // 5. Create ADB instance
-        const adb = new Adb(transport);
-        log("Connected! Running command...");
-        log(`$ ${CMD}`);
-        
-        // 6. Execute command
-        const output = await adb.subprocess.spawnAndWaitLegacy(CMD);
-        
+        const adb = new Adb.Adb(transport);
+        log("Connected successfully!");
         log("---------------------------");
-        if (output) {
-          log(`Output: ${output}`);
-        } else {
-          log("Command executed (no output)");
+        log(`Executing: ${CMD}`);
+        
+        try {
+          const result = await adb.subprocess.spawnAndWaitLegacy(CMD);
+          log("---------------------------");
+          if (result && result.trim()) {
+            log(`Output: ${result}`);
+          } else {
+            log("Command completed (no output)");
+          }
+          log("---------------------------");
+          log("✓ SUCCESS! Permission granted.", false);
+          log("You can now disconnect your device.", false);
+          
+          alert("✓ Success! Permission granted. You can disconnect your device now.");
+        } catch (cmdError) {
+          log(`Command error: ${cmdError.message}`, true);
+          log("The command may have still succeeded. Check your app.", false);
         }
-        log("---------------------------");
-        log("✓ SUCCESS! Permission granted.", false);
-        log("You can now unplug your device.", false);
         
-        // Cleanup
-        await adb.close();
+        try {
+          await adb.close();
+        } catch (e) {
+          // Ignore close errors
+        }
         
-        alert("✓ Success! App unlocked. You can unplug your device now.");
         connectBtn.disabled = false;
         
       } catch (err) {
-        console.error(err);
+        console.error("Full error:", err);
         connectBtn.disabled = false;
         
         if (err.name === "NotFoundError") {
-          log("Connection cancelled by user.", false);
-        } else if (err.message?.includes("claimInterface")) {
+          log("Device selection cancelled.", false);
+        } else if (err.message?.includes("claim")) {
           log("ERROR: Device is busy!", true);
-          log("Fix: Run 'adb kill-server' in terminal and try again.", true);
-        } else if (err.message?.includes("Unable to claim interface")) {
-          log("ERROR: Cannot access device!", true);
-          log("Fix: Disconnect device, run 'adb kill-server', reconnect and try again.", true);
+          log("Solution: Run 'adb kill-server' in your terminal and try again.", true);
         } else {
-          log(`ERROR: ${err.message || err}`, true);
+          log(`ERROR: ${err.message || String(err)}`, true);
         }
       }
     };
