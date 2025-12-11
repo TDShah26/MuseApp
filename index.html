@@ -5,106 +5,91 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Unlock Focus Mode</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script type="importmap">
+  {
+    "imports": {
+      "@yume-chan/adb": "https://esm.sh/@yume-chan/adb@2.3.1?bundle",
+      "@yume-chan/adb-daemon-webusb": "https://esm.sh/@yume-chan/adb-daemon-webusb@2.1.0?bundle",
+      "@yume-chan/adb-credential-web": "https://esm.sh/@yume-chan/adb-credential-web@2.1.0?bundle"
+    }
+  }
+  </script>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900">
-  <div class="max-w-4xl mx-auto px-4 py-10 space-y-8">
-    <header class="text-center space-y-3">
-      <h1 class="text-4xl font-bold text-slate-900">Unlock Focus Mode</h1>
-      <p class="text-lg text-slate-600">One-click setup for your Android app</p>
+<body class="min-h-screen bg-slate-50 text-slate-900 font-sans">
+
+  <div class="max-w-3xl mx-auto px-6 py-12 space-y-8">
+    <header class="text-center space-y-2">
+      <h1 class="text-3xl font-bold text-slate-900">Unlock Focus Mode</h1>
+      <p class="text-slate-600">Connect your phone to enable the app.</p>
     </header>
 
-    <section class="bg-white shadow-sm ring-1 ring-slate-200 rounded-xl p-6 space-y-4">
-      <div class="text-center space-y-3">
-        <button
-          id="connectBtn"
-          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition"
-        >
-          Connect & Unlock App
-        </button>
+    <div id="protocolWarning" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md">
+      <p class="font-bold">⚠️ CRITICAL ERROR: File Opened Incorrectly</p>
+      <p>You cannot double-click this file. You must run it on a local server.</p>
+      <p class="mt-2 text-sm">VS Code users: Right-click -> "Open with Live Server".</p>
+    </div>
+
+    <div class="bg-white p-8 rounded-2xl shadow-sm ring-1 ring-slate-200 text-center space-y-6">
+      <button id="connectBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        Connect Android Device
+      </button>
+
+      <div class="text-left space-y-2">
+        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Console Log</label>
+        <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
       </div>
-      
-      <div class="space-y-2">
-        <div class="flex justify-between items-end">
-          <p class="text-sm font-medium text-slate-700">Connection Log</p>
-          <button id="clearBtn" class="text-xs text-blue-500 hover:underline">Clear Log</button>
-        </div>
-        <div
-          id="statusConsole"
-          class="min-h-[250px] max-h-96 overflow-y-auto text-xs bg-slate-900 text-slate-200 rounded-lg p-4 font-mono leading-relaxed"
-        ></div>
-      </div>
-    </section>
+    </div>
   </div>
 
-  <script>
-    window.onerror = function(msg, source, line) {
-      const consoleDiv = document.getElementById("statusConsole");
-      if(consoleDiv) consoleDiv.innerHTML += `<div class="text-red-400 font-bold mt-2">CRITICAL: ${msg} (Line ${line})</div>`;
-    };
-  </script>
-
   <script type="module">
-    // --- FIXED IMPORTS (Using 'latest' via esm.sh to avoid 404s) ---
-    import { Adb, AdbDaemonTransport } from "https://esm.sh/@yume-chan/adb@2.3.1?bundle&target=es2020";
-    import { AdbDaemonWebUsbDeviceManager } from "https://esm.sh/@yume-chan/adb-daemon-webusb@2.1.0?bundle&target=es2020";
-    import AdbWebCredentialStore from "https://esm.sh/@yume-chan/adb-credential-web@2.1.0?bundle&target=es2020";
+    // --- 1. IMPORTS (Now clean thanks to Import Map) ---
+    import { Adb, AdbDaemonTransport } from "@yume-chan/adb";
+    import { AdbDaemonWebUsbDeviceManager } from "@yume-chan/adb-daemon-webusb";
+    import AdbWebCredentialStore from "@yume-chan/adb-credential-web";
 
-    // --- CONFIGURATION ---
-    // TODO: CHECK THIS MATCHES YOUR ANDROID APP EXACTLY
-    const PACKAGE_NAME = "com.example.muse"; 
+    // --- 2. CONFIG ---
+    const PACKAGE_NAME = "com.example.muse"; // <--- CHANGE THIS!
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
-    // ---------------------
-
-    const statusConsole = document.getElementById("statusConsole");
-    const connectBtn = document.getElementById("connectBtn");
     
-    // Logging Helper
-    function log(msg, type="info") {
+    // --- 3. LOGGING UTILS ---
+    const consoleDiv = document.getElementById("console");
+    const log = (msg, isError = false) => {
       const div = document.createElement("div");
       div.textContent = `> ${msg}`;
-      if(type === "error") div.className = "text-rose-400 font-bold";
-      if(type === "success") div.className = "text-emerald-400 font-bold";
-      statusConsole.appendChild(div);
-      statusConsole.scrollTop = statusConsole.scrollHeight;
+      if(isError) div.style.color = "#ff6b6b";
+      consoleDiv.appendChild(div);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    };
+
+    // --- 4. SERVER CHECK ---
+    if (window.location.protocol === 'file:') {
+        document.getElementById("protocolWarning").classList.remove("hidden");
+        document.getElementById("connectBtn").disabled = true;
+        log("ERROR: You opened this as a file. Please use a Local Server (localhost).", true);
+        throw new Error("File protocol detected");
     }
 
-    // Clear Log Button
-    document.getElementById("clearBtn").onclick = () => statusConsole.innerHTML = "";
+    log("System initialized. Ready to connect.");
 
-    // Browser Check
-    if(!navigator.usb) {
-      log("ERROR: WebUSB is not supported in this browser.", "error");
-      log("Please use Chrome, Edge, Brave, or Opera.", "error");
-      connectBtn.disabled = true;
-      connectBtn.className += " opacity-50 cursor-not-allowed";
-      connectBtn.innerText = "Browser Not Supported";
-    } else {
-      log("System Ready. Waiting for connection...");
-    }
-
-    // Main Logic
-    connectBtn.onclick = async () => {
+    // --- 5. MAIN LOGIC ---
+    document.getElementById("connectBtn").onclick = async () => {
       try {
-        log("Opening device picker...");
+        log("Looking for USB devices...");
         
-        // 1. Get Manager
         const Manager = AdbDaemonWebUsbDeviceManager.BROWSER;
-        if (!Manager) throw new Error("WebUSB Manager not found.");
+        if (!Manager) throw new Error("WebUSB not supported in this browser (Use Chrome).");
 
-        // 2. Request Device
         const device = await Manager.requestDevice();
-        if(!device) {
-          log("Selection cancelled.", "error");
+        if (!device) {
+          log("No device selected.", true);
           return;
         }
 
-        log(`Device selected: ${device.name}`);
-        
-        // 3. Connect
+        log(`Connecting to ${device.name}...`);
         const connection = await device.connect();
-        
-        // 4. Authenticate
-        log("Authenticating... (Please check your phone screen!)");
+
+        log("Authenticating... (Please tap ALLOW on your phone screen)");
         const credentialStore = new AdbWebCredentialStore();
         const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
@@ -112,31 +97,25 @@
           credentialStore,
         });
 
-        // 5. Run Command
         log("Authorized! Sending command...");
         const adb = new Adb(transport);
-        const cmd = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
         
-        const process = await adb.subprocess.spawn(cmd);
+        // Execute Command
+        const process = await adb.subprocess.spawn(`pm grant ${PACKAGE_NAME} ${PERMISSION}`);
         
-        // 6. Wait for finish
+        // Wait for it to finish
         await process.exit;
         
-        log("-----------------------------------");
-        log(`Permission Granted for: ${PACKAGE_NAME}`, "success");
-        log("You can unplug your phone now.", "success");
-        log("-----------------------------------");
+        log("SUCCESS! Permission granted.", false);
+        log("You may now unplug your phone.");
+        alert("Success! App unlocked.");
 
       } catch (err) {
         console.error(err);
         if(err.message.includes("ClaimInterface")) {
-          log("ERROR: Device is busy!", "error");
-          log("Close Android Studio or other ADB tools.", "error");
-        } else if (err.message.includes("Unable to retrieve")) {
-          log("ERROR: Connection failed.", "error");
-          log("Unplug the USB cable and plug it back in.", "error");
+            log("ERROR: Device is busy. Close Android Studio/ADB.", true);
         } else {
-          log(`ERROR: ${err.message}`, "error");
+            log(`ERROR: ${err.message}`, true);
         }
       }
     };
