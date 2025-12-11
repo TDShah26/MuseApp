@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Unlock Focus Mode</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -27,18 +26,18 @@
   </div>
 
   <script type="module">
-    // We use 'webadb.js' which is a single file. No complex imports.
-    import Adb from "https://cdn.jsdelivr.net/gh/cyrus-and/webadb@master/webadb.js";
+    // Load 'webadb' from NPM via esm.sh (Bundled)
+    import webadb from "https://esm.sh/webadb?bundle";
 
-    // --- CONFIGURATION ---
-    const PACKAGE_NAME = "com.example.muse"; // <--- CHANGE THIS to your App ID
+    // --- CONFIG ---
+    // REPLACE THIS WITH YOUR EXACT PACKAGE NAME
+    const PACKAGE_NAME = "com.example.muse"; 
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
     const CMD = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
 
     const consoleDiv = document.getElementById("console");
     const connectBtn = document.getElementById("connectBtn");
 
-    // Helper: Logging
     const log = (msg, isError = false) => {
       const div = document.createElement("div");
       div.textContent = `> ${msg}`;
@@ -47,7 +46,6 @@
       consoleDiv.scrollTop = consoleDiv.scrollHeight;
     };
 
-    // Helper: Check Support
     if (!navigator.usb) {
       log("Error: WebUSB not supported. Use Chrome or Edge.", true);
       connectBtn.disabled = true;
@@ -55,29 +53,31 @@
       log("System Ready. Click Connect.");
     }
 
-    // Main Logic
     connectBtn.onclick = async () => {
       try {
         log("Opening device picker...");
         
-        // 1. Open Connection
-        const adb = await Adb.open("WebUSB");
-        if (!adb) {
-             log("No device selected.", true);
-             return;
-        }
+        // 1. Connect using the simple WebADB API
+        const adb = await webadb.create();
         
-        log("Device connected. Authenticating...");
-        
-        // 2. Connect (Matches the library API)
-        await adb.connect();
-        
-        log("Sending command...");
+        log("Device connected. Sending command...");
         log(`Executing: ${CMD}`);
 
-        // 3. Run Command (Simpler API)
+        // 2. Run Command
+        // webadb.shell() returns a proxy that lets us read the output
         const shell = await adb.shell(CMD);
-        const output = await shell.receive();
+        
+        // 3. Read Output
+        const decoder = new TextDecoder();
+        let output = "";
+        
+        // Use the library's reader
+        const reader = shell.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          output += decoder.decode(value);
+        }
 
         log("Response: " + output);
         log("---------------------------");
