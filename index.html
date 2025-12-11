@@ -27,17 +27,18 @@
   </div>
 
   <script type="module">
-    // Switch to the lighter "webadb" library which is easier to load in vanilla HTML
-    import webadb from "https://cdn.jsdelivr.net/gh/cyrus-and/webadb@master/webadb.js";
+    // We use 'webadb.js' which is a single file. No complex imports.
+    import Adb from "https://cdn.jsdelivr.net/gh/cyrus-and/webadb@master/webadb.js";
 
-    // --- CONFIG ---
-    const PACKAGE_NAME = "com.example.muse"; // <--- CHANGE THIS!
+    // --- CONFIGURATION ---
+    const PACKAGE_NAME = "com.example.muse"; // <--- CHANGE THIS to your App ID
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
     const CMD = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
 
     const consoleDiv = document.getElementById("console");
     const connectBtn = document.getElementById("connectBtn");
 
+    // Helper: Logging
     const log = (msg, isError = false) => {
       const div = document.createElement("div");
       div.textContent = `> ${msg}`;
@@ -46,51 +47,50 @@
       consoleDiv.scrollTop = consoleDiv.scrollHeight;
     };
 
-    // Check Browser Support
+    // Helper: Check Support
     if (!navigator.usb) {
       log("Error: WebUSB not supported. Use Chrome or Edge.", true);
       connectBtn.disabled = true;
     } else {
-      log("Ready. Click Connect.");
+      log("System Ready. Click Connect.");
     }
 
+    // Main Logic
     connectBtn.onclick = async () => {
       try {
         log("Opening device picker...");
         
-        // 1. Connect
-        const adb = await webadb.create();
-        log("Device selected. Connecting...");
-
-        // 2. Shell Command
-        log("Sending command...");
-        // This library uses a simpler .shell() method
-        const shell = await adb.shell(CMD);
-        
-        // 3. Read Output
-        const decoder = new TextDecoder();
-        let output = "";
-        
-        // This library returns a ReadableStream
-        const reader = shell.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          output += decoder.decode(value);
+        // 1. Open Connection
+        const adb = await Adb.open("WebUSB");
+        if (!adb) {
+             log("No device selected.", true);
+             return;
         }
+        
+        log("Device connected. Authenticating...");
+        
+        // 2. Connect (Matches the library API)
+        await adb.connect();
+        
+        log("Sending command...");
+        log(`Executing: ${CMD}`);
 
-        log(output);
+        // 3. Run Command (Simpler API)
+        const shell = await adb.shell(CMD);
+        const output = await shell.receive();
+
+        log("Response: " + output);
         log("---------------------------");
         log("SUCCESS! Permission granted.", false);
-        log("You can unplug your phone.", false);
+        log("You can unplug your phone now.", false);
         alert("Success! App unlocked.");
 
       } catch (err) {
         console.error(err);
-        if (err.message.includes("claimInterface")) {
+        if (err.message && err.message.includes("claimInterface")) {
           log("ERROR: Device busy! Run `adb kill-server` in terminal.", true);
         } else {
-          log(`ERROR: ${err.message}`, true);
+          log(`ERROR: ${err.message || err}`, true);
         }
       }
     };
