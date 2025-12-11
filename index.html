@@ -5,13 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Unlock Focus Mode</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  
+
   <script type="importmap">
   {
+    "scopes": {
+      "https://ga.jspm.io/": {
+        "buffer": "https://ga.jspm.io/npm:@jspm/core@2.0.1/nodelibs/browser/buffer.js",
+        "process": "https://ga.jspm.io/npm:@jspm/core@2.0.1/nodelibs/browser/process.js"
+      }
+    },
     "imports": {
-      "@yume-chan/adb": "https://esm.sh/@yume-chan/adb@2.3.1?bundle",
-      "@yume-chan/adb-daemon-webusb": "https://esm.sh/@yume-chan/adb-daemon-webusb@2.1.0?bundle",
-      "@yume-chan/adb-credential-web": "https://esm.sh/@yume-chan/adb-credential-web@2.1.0?bundle"
+      "@yume-chan/adb": "https://ga.jspm.io/npm:@yume-chan/adb@2.1.3/index.js",
+      "@yume-chan/adb-daemon-webusb": "https://ga.jspm.io/npm:@yume-chan/adb-daemon-webusb@2.1.3/index.js",
+      "@yume-chan/adb-credential-web": "https://ga.jspm.io/npm:@yume-chan/adb-credential-web@2.1.3/index.js",
+      "@yume-chan/adb-transport": "https://ga.jspm.io/npm:@yume-chan/adb-transport@2.1.3/index.js",
+      "h3": "https://ga.jspm.io/npm:h3@1.11.1/dist/index.mjs"
     }
   }
   </script>
@@ -24,35 +32,33 @@
       <p class="text-slate-600">Connect your phone to enable the app.</p>
     </header>
 
-    <div id="protocolWarning" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md">
-      <p class="font-bold">⚠️ CRITICAL ERROR: File Opened Incorrectly</p>
-      <p>You cannot double-click this file. You must run it on a local server.</p>
-      <p class="mt-2 text-sm">VS Code users: Right-click -> "Open with Live Server".</p>
-    </div>
-
     <div class="bg-white p-8 rounded-2xl shadow-sm ring-1 ring-slate-200 text-center space-y-6">
       <button id="connectBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
         Connect Android Device
       </button>
 
       <div class="text-left space-y-2">
-        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Console Log</label>
+        <div class="flex justify-between items-end">
+          <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Console Log</label>
+          <button id="clearBtn" class="text-xs text-blue-500 hover:underline">Clear</button>
+        </div>
         <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
       </div>
     </div>
   </div>
 
   <script type="module">
-    // --- 1. IMPORTS (Now clean thanks to Import Map) ---
-    import { Adb, AdbDaemonTransport } from "@yume-chan/adb";
+    // --- 1. IMPORTS ---
+    import { Adb } from "@yume-chan/adb";
+    import { AdbDaemonTransport } from "@yume-chan/adb-transport";
     import { AdbDaemonWebUsbDeviceManager } from "@yume-chan/adb-daemon-webusb";
     import AdbWebCredentialStore from "@yume-chan/adb-credential-web";
 
     // --- 2. CONFIG ---
-    const PACKAGE_NAME = "com.example.muse"; // <--- CHANGE THIS!
+    const PACKAGE_NAME = "com.example.muse"; // <--- MAKE SURE THIS MATCHES!
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
     
-    // --- 3. LOGGING UTILS ---
+    // --- 3. LOGGING ---
     const consoleDiv = document.getElementById("console");
     const log = (msg, isError = false) => {
       const div = document.createElement("div");
@@ -61,25 +67,21 @@
       consoleDiv.appendChild(div);
       consoleDiv.scrollTop = consoleDiv.scrollHeight;
     };
+    document.getElementById("clearBtn").onclick = () => consoleDiv.innerHTML = "";
 
-    // --- 4. SERVER CHECK ---
-    if (window.location.protocol === 'file:') {
-        document.getElementById("protocolWarning").classList.remove("hidden");
-        document.getElementById("connectBtn").disabled = true;
-        log("ERROR: You opened this as a file. Please use a Local Server (localhost).", true);
-        throw new Error("File protocol detected");
-    }
-
-    log("System initialized. Ready to connect.");
+    // --- 4. TEXT DECODER ---
+    const decoder = new TextDecoder();
 
     // --- 5. MAIN LOGIC ---
     document.getElementById("connectBtn").onclick = async () => {
       try {
         log("Looking for USB devices...");
         
+        // 1. Get Manager
         const Manager = AdbDaemonWebUsbDeviceManager.BROWSER;
-        if (!Manager) throw new Error("WebUSB not supported in this browser (Use Chrome).");
+        if (!Manager) throw new Error("WebUSB not supported. Use Chrome/Edge.");
 
+        // 2. Request Device
         const device = await Manager.requestDevice();
         if (!device) {
           log("No device selected.", true);
@@ -89,31 +91,41 @@
         log(`Connecting to ${device.name}...`);
         const connection = await device.connect();
 
-        log("Authenticating... (Please tap ALLOW on your phone screen)");
+        log("Authenticating... (Please tap ALLOW on your phone)");
         const credentialStore = new AdbWebCredentialStore();
+        
+        // 3. Authenticate
         const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
           connection,
           credentialStore,
         });
 
-        log("Authorized! Sending command...");
+        // 4. Create ADB Instance
         const adb = new Adb(transport);
+
+        log("Authorized! Sending command...");
         
-        // Execute Command
+        // 5. Execute Command (Standard API)
         const process = await adb.subprocess.spawn(`pm grant ${PACKAGE_NAME} ${PERMISSION}`);
         
-        // Wait for it to finish
-        await process.exit;
-        
+        // 6. Read Output (Important to drain the stream)
+        const reader = process.stdout.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          log(decoder.decode(value));
+        }
+
+        log("-----------------------------------");
         log("SUCCESS! Permission granted.", false);
-        log("You may now unplug your phone.");
+        log("You can unplug your phone now.", false);
         alert("Success! App unlocked.");
 
       } catch (err) {
         console.error(err);
         if(err.message.includes("ClaimInterface")) {
-            log("ERROR: Device is busy. Close Android Studio/ADB.", true);
+            log("ERROR: Device is busy. Run `adb kill-server` in terminal.", true);
         } else {
             log(`ERROR: ${err.message}`, true);
         }
