@@ -21,17 +21,30 @@
         <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
       </div>
     </div>
-    <div class="text-center text-sm text-slate-500 space-y-1 mt-4">
+    <div class="text-center text-sm text-slate-500 space-y-2 mt-4">
       <p>⚠️ Make sure USB debugging is enabled on your device</p>
-      <p>💡 If connection fails, run <code class="bg-slate-200 px-2 py-1 rounded">adb kill-server</code> in terminal</p>
+      <p>💡 Accept the USB debugging prompt on your phone</p>
+      <p>🔧 If it fails, run <code class="bg-slate-200 px-2 py-1 rounded">adb kill-server</code> in terminal</p>
     </div>
   </div>
   
-  <script src="https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@0.0.24/bundles/index.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@yume-chan/adb@0.0.24/bundles/index.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@yume-chan/stream-extra@0.0.24/bundles/index.umd.js"></script>
+  <!-- Use Skypack for proper ESM resolution -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@yume-chan/adb": "https://cdn.skypack.dev/@yume-chan/adb@0.0.24",
+      "@yume-chan/adb-daemon-webusb": "https://cdn.skypack.dev/@yume-chan/adb-daemon-webusb@0.0.24",
+      "@yume-chan/stream-extra": "https://cdn.skypack.dev/@yume-chan/stream-extra@0.0.24",
+      "@yume-chan/struct": "https://cdn.skypack.dev/@yume-chan/struct@0.0.24",
+      "@yume-chan/event": "https://cdn.skypack.dev/@yume-chan/event@0.0.24"
+    }
+  }
+  </script>
   
-  <script>
+  <script type="module">
+    import { AdbDaemonWebUsbDeviceManager } from "@yume-chan/adb-daemon-webusb";
+    import { AdbDaemonTransport, Adb } from "@yume-chan/adb";
+    
     // --- CONFIG ---
     const PACKAGE_NAME = "com.example.muse"; 
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
@@ -55,32 +68,31 @@
       log("System Ready. Click Connect.");
     }
     
-    // Credential store for authentication
-    const credentialStore = {
-      async *iterateKeys() {},
-      async generateKey() {
-        const { privateKey, publicKey } = await crypto.subtle.generateKey(
+    // RSA key generation for ADB authentication
+    async function generateRSAKey() {
+      try {
+        const keyPair = await crypto.subtle.generateKey(
           {
             name: "RSASSA-PKCS1-v1_5",
             modulusLength: 2048,
             publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
-            hash: "SHA-1"
+            hash: { name: "SHA-1" }
           },
           true,
           ["sign", "verify"]
         );
-        return { privateKey, publicKey };
+        return keyPair;
+      } catch (err) {
+        log(`Key generation error: ${err.message}`, true);
+        throw err;
       }
-    };
+    }
     
     connectBtn.onclick = async () => {
+      let adb = null;
       try {
         log("Opening device picker...");
         connectBtn.disabled = true;
-        
-        // Access the global UMD exports
-        const { AdbDaemonWebUsbDeviceManager } = AdbDaemonWebUsb;
-        const { AdbDaemonTransport, Adb } = AdbPackage;
         
         const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
         const device = await manager.requestDevice();
@@ -92,10 +104,25 @@
         }
         
         log(`Device: ${device.serial}`);
-        log("Connecting...");
+        log("Connecting to device...");
         
         const connection = await device.connect();
-        log("Authenticating...");
+        log("Connection established");
+        log("Generating authentication keys...");
+        
+        const keyPair = await generateRSAKey();
+        
+        const credentialStore = {
+          async *iterateKeys() {
+            yield keyPair;
+          },
+          async generateKey() {
+            return keyPair;
+          }
+        };
+        
+        log("Authenticating with device...");
+        log("(Check your phone for USB debugging prompt)");
         
         const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
@@ -103,50 +130,52 @@
           credentialStore
         });
         
-        const adb = new Adb(transport);
-        log("Connected successfully!");
+        adb = new Adb(transport);
+        log("✓ Authentication successful!");
         log("---------------------------");
         log(`Executing: ${CMD}`);
         
-        try {
-          const result = await adb.subprocess.spawnAndWaitLegacy(CMD);
-          log("---------------------------");
-          if (result && result.trim()) {
-            log(`Output: ${result}`);
-          } else {
-            log("Command completed successfully");
-          }
-          log("---------------------------");
-          log("✓ SUCCESS! Permission granted.", false);
-          log("You can now disconnect your device.", false);
-          
-          alert("✓ Success! Permission granted. You can disconnect your device now.");
-        } catch (cmdError) {
-          log(`Command error: ${cmdError.message}`, true);
-          log("The command may have still succeeded. Check your app.", false);
-        }
+        const output = await adb.subprocess.spawnAndWaitLegacy(CMD);
         
-        try {
-          await adb.close();
-        } catch (e) {
-          // Ignore close errors
+        log("---------------------------");
+        if (output && output.trim()) {
+          log(`Output: ${output.trim()}`);
+        } else {
+          log("Command executed successfully (no output)");
         }
+        log("---------------------------");
+        log("✓ SUCCESS! Permission granted.", false);
+        log("✓ You can now disconnect your device.", false);
         
-        connectBtn.disabled = false;
+        alert("✓ Success! Permission granted.\n\nYou can now disconnect your device and use your app.");
         
       } catch (err) {
         console.error("Full error:", err);
-        connectBtn.disabled = false;
         
         if (err.name === "NotFoundError") {
           log("Device selection cancelled.", false);
         } else if (err.message?.includes("claim") || err.message?.includes("interface")) {
-          log("ERROR: Device is busy!", true);
-          log("Solution: Run 'adb kill-server' in your terminal and try again.", true);
+          log("ERROR: Device interface busy!", true);
+          log("Fix: Run 'adb kill-server' in terminal and reconnect device.", true);
+        } else if (err.message?.includes("undefined") || err.message?.includes("properties")) {
+          log("ERROR: Authentication/protocol issue", true);
+          log("Possible causes:", false);
+          log("1. USB debugging not authorized on phone", false);
+          log("2. ADB server interference - run 'adb kill-server'", false);
+          log("3. Try disconnecting and reconnecting device", false);
         } else {
           log(`ERROR: ${err.message || String(err)}`, true);
-          log("Check console for more details.", true);
         }
+      } finally {
+        if (adb) {
+          try {
+            await adb.close();
+            log("Connection closed.");
+          } catch (e) {
+            // Ignore close errors
+          }
+        }
+        connectBtn.disabled = false;
       }
     };
   </script>
