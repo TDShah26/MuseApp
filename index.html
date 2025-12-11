@@ -21,16 +21,17 @@
         <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
       </div>
     </div>
-    <div class="text-center text-sm text-slate-500 space-y-1">
+    <div class="text-center text-sm text-slate-500 space-y-1 mt-4">
       <p>⚠️ Make sure USB debugging is enabled on your device</p>
       <p>💡 If connection fails, run <code class="bg-slate-200 px-2 py-1 rounded">adb kill-server</code> in terminal</p>
     </div>
   </div>
-  <script type="module">
-    // Import from jsdelivr with specific version that works
-    import * as AdbWebUsb from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@0.0.24/+esm";
-    import * as Adb from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@0.0.24/+esm";
-    
+  
+  <script src="https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@0.0.24/bundles/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@yume-chan/adb@0.0.24/bundles/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@yume-chan/stream-extra@0.0.24/bundles/index.umd.js"></script>
+  
+  <script>
     // --- CONFIG ---
     const PACKAGE_NAME = "com.example.muse"; 
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
@@ -54,7 +55,7 @@
       log("System Ready. Click Connect.");
     }
     
-    // Simple credential store
+    // Credential store for authentication
     const credentialStore = {
       async *iterateKeys() {},
       async generateKey() {
@@ -77,7 +78,11 @@
         log("Opening device picker...");
         connectBtn.disabled = true;
         
-        const manager = AdbWebUsb.AdbDaemonWebUsbDeviceManager.BROWSER;
+        // Access the global UMD exports
+        const { AdbDaemonWebUsbDeviceManager } = AdbDaemonWebUsb;
+        const { AdbDaemonTransport, Adb } = AdbPackage;
+        
+        const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
         const device = await manager.requestDevice();
         
         if (!device) {
@@ -92,13 +97,13 @@
         const connection = await device.connect();
         log("Authenticating...");
         
-        const transport = await Adb.AdbDaemonTransport.authenticate({
+        const transport = await AdbDaemonTransport.authenticate({
           serial: device.serial,
           connection,
           credentialStore
         });
         
-        const adb = new Adb.Adb(transport);
+        const adb = new Adb(transport);
         log("Connected successfully!");
         log("---------------------------");
         log(`Executing: ${CMD}`);
@@ -109,7 +114,7 @@
           if (result && result.trim()) {
             log(`Output: ${result}`);
           } else {
-            log("Command completed (no output)");
+            log("Command completed successfully");
           }
           log("---------------------------");
           log("✓ SUCCESS! Permission granted.", false);
@@ -135,11 +140,12 @@
         
         if (err.name === "NotFoundError") {
           log("Device selection cancelled.", false);
-        } else if (err.message?.includes("claim")) {
+        } else if (err.message?.includes("claim") || err.message?.includes("interface")) {
           log("ERROR: Device is busy!", true);
           log("Solution: Run 'adb kill-server' in your terminal and try again.", true);
         } else {
           log(`ERROR: ${err.message || String(err)}`, true);
+          log("Check console for more details.", true);
         }
       }
     };
