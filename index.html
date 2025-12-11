@@ -65,9 +65,12 @@
   </div>
 
   <script type="module">
-    import { Adb, AdbDaemonWebUsbDeviceManager, AdbWebCredentialStore } from "https://esm.sh/@yume-chan/adb@latest?bundle&target=es2020";
+    // 1. Fixed imports: load from the correct packages
+    import { Adb, AdbDaemonTransport } from "https://esm.sh/@yume-chan/adb@2.4.4?bundle&target=es2020";
+    import { AdbDaemonWebUsbDeviceManager } from "https://esm.sh/@yume-chan/adb-daemon-webusb@2.1.3?bundle&target=es2020";
+    import AdbWebCredentialStore from "https://esm.sh/@yume-chan/adb-credential-web@2.1.3?bundle&target=es2020";
 
-    // Adjust to your package if it ever changes.
+    // Configuration: update PACKAGE_NAME if the app id changes.
     const PACKAGE_NAME = "com.example.muse";
     const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
 
@@ -79,56 +82,37 @@
 
     const log = (message, type = "info") => {
       const line = document.createElement("div");
-      line.textContent = message;
-      if (type === "error") {
-        line.classList.add("text-rose-300");
-      } else if (type === "success") {
-        line.classList.add("text-emerald-300");
-      } else {
-        line.classList.add("text-slate-200");
-      }
+      line.textContent = `> ${message}`;
+      if (type === "error") line.classList.add("text-rose-300", "font-bold");
+      else if (type === "success") line.classList.add("text-emerald-300", "font-bold");
+      else line.classList.add("text-slate-300");
       statusConsole.appendChild(line);
       statusConsole.scrollTop = statusConsole.scrollHeight;
     };
 
-    const clearLog = () => {
-      statusConsole.innerHTML = "";
-    };
+    const clearLog = () => (statusConsole.innerHTML = "");
 
     const setButtonLoading = (isLoading) => {
       if (isLoading) {
         connectBtn.disabled = true;
-        connectBtn.dataset.originalText = connectBtn.textContent;
         connectBtn.textContent = "Working...";
+        connectBtn.classList.add("opacity-75", "cursor-wait");
       } else {
         connectBtn.disabled = false;
-        connectBtn.textContent = connectBtn.dataset.originalText || "Connect & Unlock App";
+        connectBtn.textContent = "Connect & Unlock App";
+        connectBtn.classList.remove("opacity-75", "cursor-wait");
       }
     };
 
     const ensureSupport = () => {
-      const supported = typeof navigator !== "undefined" && "usb" in navigator;
+      const supported = navigator.usb !== undefined;
       if (!supported) {
         warning.classList.remove("hidden");
         connectBtn.disabled = true;
-        log("WebUSB is not available in this browser. Use Chrome, Edge, or Brave.", "error");
+        connectBtn.classList.add("bg-slate-400", "cursor-not-allowed");
+        log("Error: WebUSB is not supported. Please use Chrome, Edge, or Opera.", "error");
       }
       return supported;
-    };
-
-    const drainStream = async (stream) => {
-      if (!stream?.getReader) return;
-      const reader = stream.getReader();
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        if (value) {
-          const text = typeof value === "string" ? value : decoder.decode(value);
-          if (text.trim()) {
-            log(text);
-          }
-        }
-      }
     };
 
     const run = async () => {
@@ -137,33 +121,58 @@
 
       setButtonLoading(true);
       try {
-        log("Requesting device access...");
-        const device = await AdbDaemonWebUsbDeviceManager.requestDevice();
+        log("Requesting device... (Please select your phone in the popup)");
+
+        const Manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+        if (!Manager) throw new Error("WebUSB not supported in this context (HTTPS required).");
+
+        const device = await Manager.requestDevice();
         if (!device) {
-          log("No device selected.", "error");
+          log("No device selected. Action cancelled.", "error");
+          setButtonLoading(false);
           return;
         }
 
-        log("Connecting to device...");
-        const transport = await device.connect();
+        log("Connecting to device interface...");
+        const connection = await device.connect();
 
-        log("Authorizing (check your phone)...");
+        log("Authenticating... (Check your phone screen for a popup!)");
         const credentialStore = new AdbWebCredentialStore();
-        const adb = await Adb.authenticate(transport, credentialStore);
+        const transport = await AdbDaemonTransport.authenticate({
+          serial: device.serial,
+          connection,
+          credentialStore,
+        });
+
+        const adb = new Adb(transport);
 
         const command = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
-        log(`Sending command: ${command}`);
-        const shell = await adb.subprocess.shell(command);
-        await drainStream(shell);
+        log(`Executing: ${command}`);
 
-        if (shell?.exit) {
-          await shell.exit;
+        const process = await adb.subprocess.spawn(command);
+        const stdoutReader = process.stdout.getReader();
+        let output = "";
+
+        while (true) {
+          const { done, value } = await stdoutReader.read();
+          if (done) break;
+          output += decoder.decode(value);
         }
 
-        log("Success!", "success");
+        await process.exit;
+
+        if (output.trim()) log(output.trim());
+        log("Command executed successfully!", "success");
+        log("✅ You can now unplug your phone and open the app.", "success");
       } catch (error) {
         console.error(error);
-        log(error?.message || "Something went wrong.", "error");
+        if (error?.message?.includes("ClaimInterface")) {
+          log("Error: Device is busy. Close other ADB tools or `adb kill-server`.", "error");
+        } else if (error?.message?.includes("Unable to retrieve")) {
+          log("Error: Connection Failed. Unplug and replug your cable.", "error");
+        } else {
+          log(`Error: ${error?.message || error}`, "error");
+        }
       } finally {
         setButtonLoading(false);
       }
@@ -174,4 +183,5 @@
   </script>
 </body>
 </html>
+
 
