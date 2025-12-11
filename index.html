@@ -3,185 +3,142 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Unlock Focus Mode</title>
+  <title>Unlock Focus Mode (Debug)</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
   <div class="max-w-4xl mx-auto px-4 py-10 space-y-8">
-    <!-- Header -->
     <header class="text-center space-y-3">
       <h1 class="text-4xl font-bold text-slate-900">Unlock Focus Mode</h1>
-      <p class="text-lg text-slate-600">One-click setup to enable Grayscale features on your Android.</p>
-      <p id="browserWarning" class="hidden text-sm text-amber-700 bg-amber-100 border border-amber-200 rounded-lg px-4 py-3">
-        This tool requires a Chromium browser (Chrome, Edge, Brave).
-      </p>
+      <p class="text-lg text-slate-600">Debug Mode</p>
     </header>
 
-    <!-- Instructions -->
-    <section class="bg-white shadow-sm ring-1 ring-slate-200 rounded-xl p-6 space-y-6">
-      <div class="space-y-3">
-        <h2 class="text-xl font-semibold text-slate-900">Step 1: Enable USB Debugging</h2>
-        <ol class="list-decimal list-inside space-y-2 text-slate-700">
-          <li>Go to <span class="font-medium">Settings</span> &gt; <span class="font-medium">About Phone</span>.</li>
-          <li>Tap <span class="font-medium">Build Number</span> 7 times to enable Developer Mode.</li>
-          <li>Go back to <span class="font-medium">Settings</span> &gt; <span class="font-medium">System</span> &gt; <span class="font-medium">Developer Options</span>.</li>
-          <li>Scroll down and turn on <span class="font-medium">USB Debugging</span>.</li>
-        </ol>
-      </div>
-      <div class="space-y-2">
-        <h2 class="text-xl font-semibold text-slate-900">Step 2: Connect</h2>
-        <p class="text-slate-700">Plug your phone into this computer via USB.</p>
-      </div>
-    </section>
-
-    <!-- Action Area -->
     <section class="bg-white shadow-sm ring-1 ring-slate-200 rounded-xl p-6 space-y-4">
       <div class="text-center space-y-3">
         <button
           id="connectBtn"
-          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-60 disabled:cursor-not-allowed transition"
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700"
         >
-          Connect &amp; Unlock App
+          Connect & Unlock App
         </button>
-        <p class="text-sm text-slate-500">We only run a single permission command; nothing else is changed.</p>
       </div>
       <div class="space-y-2">
-        <p class="text-sm font-medium text-slate-700">Status</p>
+        <p class="text-sm font-medium text-slate-700">Debug Log</p>
         <div
           id="statusConsole"
-          class="min-h-[120px] max-h-56 overflow-y-auto text-sm bg-slate-900 text-slate-100 rounded-lg p-3 font-mono"
-          aria-live="polite"
+          class="min-h-[200px] max-h-96 overflow-y-auto text-xs bg-black text-green-400 rounded-lg p-3 font-mono"
         ></div>
       </div>
     </section>
-
-    <!-- Troubleshooting -->
-    <section class="bg-white shadow-sm ring-1 ring-slate-200 rounded-xl p-6 space-y-2">
-      <h2 class="text-lg font-semibold text-slate-900">Troubleshooting</h2>
-      <p class="text-slate-700">
-        If nothing happens, ensure your screen is unlocked and you accepted the "Allow USB Debugging" popup on your phone.
-      </p>
-    </section>
   </div>
 
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      const consoleDiv = document.getElementById("statusConsole");
+      if(consoleDiv) {
+        consoleDiv.innerHTML += `<div class="text-red-500 font-bold">CRITICAL ERROR: ${message}</div>`;
+        consoleDiv.innerHTML += `<div class="text-red-400">Line: ${lineno}</div>`;
+      }
+      alert("CRITICAL ERROR: " + message);
+    };
+  </script>
+
   <script type="module">
-    // 1. Fixed imports: load from the correct packages
-    import { Adb, AdbDaemonTransport } from "https://esm.sh/@yume-chan/adb@2.4.4?bundle&target=es2020";
-    import { AdbDaemonWebUsbDeviceManager } from "https://esm.sh/@yume-chan/adb-daemon-webusb@2.1.3?bundle&target=es2020";
-    import AdbWebCredentialStore from "https://esm.sh/@yume-chan/adb-credential-web@2.1.3?bundle&target=es2020";
-
-    // Configuration: update PACKAGE_NAME if the app id changes.
-    const PACKAGE_NAME = "com.example.muse";
-    const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
-
-    const connectBtn = document.getElementById("connectBtn");
     const statusConsole = document.getElementById("statusConsole");
-    const warning = document.getElementById("browserWarning");
+    
+    function debug(msg, type="info") {
+      console.log(msg);
+      if(!statusConsole) return;
+      const div = document.createElement("div");
+      div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      if(type === "error") div.style.color = "#ff5555"; 
+      if(type === "success") div.style.color = "#55ff55";
+      statusConsole.appendChild(div);
+    }
 
-    const decoder = new TextDecoder();
+    debug("Script starting...");
 
-    const log = (message, type = "info") => {
-      const line = document.createElement("div");
-      line.textContent = `> ${message}`;
-      if (type === "error") line.classList.add("text-rose-300", "font-bold");
-      else if (type === "success") line.classList.add("text-emerald-300", "font-bold");
-      else line.classList.add("text-slate-300");
-      statusConsole.appendChild(line);
-      statusConsole.scrollTop = statusConsole.scrollHeight;
-    };
+    try {
+        debug("Attempting to import libraries...");
+        // 1. IMPORTING
+        const { Adb, AdbDaemonTransport } = await import("https://esm.sh/@yume-chan/adb@2.4.4?bundle&target=es2020");
+        const { AdbDaemonWebUsbDeviceManager } = await import("https://esm.sh/@yume-chan/adb-daemon-webusb@2.1.3?bundle&target=es2020");
+        const { default: AdbWebCredentialStore } = await import("https://esm.sh/@yume-chan/adb-credential-web@2.1.3?bundle&target=es2020");
+        
+        debug("Libraries imported successfully!");
 
-    const clearLog = () => (statusConsole.innerHTML = "");
+        // 2. CONFIG
+        const PACKAGE_NAME = "com.example.muse"; 
+        const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
+        const connectBtn = document.getElementById("connectBtn");
 
-    const setButtonLoading = (isLoading) => {
-      if (isLoading) {
-        connectBtn.disabled = true;
-        connectBtn.textContent = "Working...";
-        connectBtn.classList.add("opacity-75", "cursor-wait");
-      } else {
-        connectBtn.disabled = false;
-        connectBtn.textContent = "Connect & Unlock App";
-        connectBtn.classList.remove("opacity-75", "cursor-wait");
-      }
-    };
-
-    const ensureSupport = () => {
-      const supported = navigator.usb !== undefined;
-      if (!supported) {
-        warning.classList.remove("hidden");
-        connectBtn.disabled = true;
-        connectBtn.classList.add("bg-slate-400", "cursor-not-allowed");
-        log("Error: WebUSB is not supported. Please use Chrome, Edge, or Opera.", "error");
-      }
-      return supported;
-    };
-
-    const run = async () => {
-      clearLog();
-      if (!ensureSupport()) return;
-
-      setButtonLoading(true);
-      try {
-        log("Requesting device... (Please select your phone in the popup)");
-
-        const Manager = AdbDaemonWebUsbDeviceManager.BROWSER;
-        if (!Manager) throw new Error("WebUSB not supported in this context (HTTPS required).");
-
-        const device = await Manager.requestDevice();
-        if (!device) {
-          log("No device selected. Action cancelled.", "error");
-          setButtonLoading(false);
-          return;
+        // 3. CHECK BROWSER
+        if(!navigator.usb) {
+            debug("ERROR: navigator.usb is undefined. Are you using Chrome/Edge?", "error");
+            debug("Note: WebUSB does not work on Firefox or Safari.", "error");
+            alert("WebUSB not supported in this browser.");
+        } else {
+            debug("WebUSB API found.");
         }
 
-        log("Connecting to device interface...");
-        const connection = await device.connect();
+        // 4. CLICK HANDLER
+        connectBtn.addEventListener("click", async () => {
+            debug("Button clicked! Starting connection flow...");
+            
+            try {
+                const Manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+                if(!Manager) throw new Error("Browser Manager not found");
 
-        log("Authenticating... (Check your phone screen for a popup!)");
-        const credentialStore = new AdbWebCredentialStore();
-        const transport = await AdbDaemonTransport.authenticate({
-          serial: device.serial,
-          connection,
-          credentialStore,
+                debug("Opening Device Picker...");
+                const device = await Manager.requestDevice();
+                
+                if(!device) {
+                    debug("User cancelled device picker.", "error");
+                    return;
+                }
+
+                debug(`Device selected: ${device.name || "Unknown Device"}`);
+                debug("Connecting...");
+                const connection = await device.connect();
+
+                debug("Authenticating...");
+                const credentialStore = new AdbWebCredentialStore();
+                const transport = await AdbDaemonTransport.authenticate({
+                    serial: device.serial,
+                    connection,
+                    credentialStore,
+                });
+
+                debug("Authentication complete. Creating ADB instance...");
+                const adb = new Adb(transport);
+
+                const command = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
+                debug(`Running command: ${command}`);
+                
+                const process = await adb.subprocess.spawn(command);
+                debug("Command sent. Waiting for exit...");
+                
+                await process.exit;
+                debug("Process exited.", "success");
+                debug("✅ SUCCESS! Check your app.", "success");
+                alert("Success! Permission granted.");
+
+            } catch (err) {
+                debug(`EXECUTION ERROR: ${err.message}`, "error");
+                console.error(err);
+                if(err.message.includes("claimInterface")) {
+                    debug("TIP: Another program (like Android Studio) is using the phone. Close it.", "error");
+                }
+            }
         });
 
-        const adb = new Adb(transport);
+        debug("Event listeners attached. Ready.");
 
-        const command = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
-        log(`Executing: ${command}`);
-
-        const process = await adb.subprocess.spawn(command);
-        const stdoutReader = process.stdout.getReader();
-        let output = "";
-
-        while (true) {
-          const { done, value } = await stdoutReader.read();
-          if (done) break;
-          output += decoder.decode(value);
-        }
-
-        await process.exit;
-
-        if (output.trim()) log(output.trim());
-        log("Command executed successfully!", "success");
-        log("✅ You can now unplug your phone and open the app.", "success");
-      } catch (error) {
-        console.error(error);
-        if (error?.message?.includes("ClaimInterface")) {
-          log("Error: Device is busy. Close other ADB tools or `adb kill-server`.", "error");
-        } else if (error?.message?.includes("Unable to retrieve")) {
-          log("Error: Connection Failed. Unplug and replug your cable.", "error");
-        } else {
-          log(`Error: ${error?.message || error}`, "error");
-        }
-      } finally {
-        setButtonLoading(false);
-      }
-    };
-
-    window.addEventListener("load", ensureSupport);
-    connectBtn.addEventListener("click", run);
+    } catch (e) {
+        debug("FATAL SCRIPT ERROR: " + e.message, "error");
+        console.error(e);
+        alert("Fatal Error: " + e.message);
+    }
   </script>
 </body>
 </html>
-
-
