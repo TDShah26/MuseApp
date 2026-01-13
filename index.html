@@ -6,189 +6,199 @@
   <title>Unlock Focus Mode</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 font-sans">
-  <div class="max-w-3xl mx-auto px-6 py-12 space-y-8">
-    <header class="text-center space-y-2">
-      <h1 class="text-3xl font-bold text-slate-900">Unlock Focus Mode</h1>
-      <p class="text-slate-600">Connect your phone to enable the app.</p>
+<body class="min-h-screen bg-slate-50 text-slate-900 font-sans p-4 md:p-8">
+  <div class="max-w-6xl mx-auto">
+    <header class="mb-10">
+      <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight">Unlock Focus Mode</h1>
+      <p class="text-slate-600 text-lg">Follow the steps below to enable advanced features on your device.</p>
     </header>
 
-    <div class="bg-white p-8 rounded-2xl shadow-sm ring-1 ring-slate-200 text-center space-y-6">
-      <button id="connectBtn" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-8 rounded-xl transition-all disabled:opacity-50">
-        Connect Android Device
-      </button>
-
-      <div class="text-left space-y-2">
-        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Status Log</label>
-        <div id="console" class="bg-slate-900 text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto leading-relaxed"></div>
-      </div>
-    </div>
-
-    <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 space-y-4">
-      <h2 class="text-lg font-bold text-amber-900 flex items-center gap-2">
-        <span>⚠️</span> First Time Setup: Enable USB Debugging
-      </h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
       
-      <div class="text-sm text-slate-700 space-y-3">
-        <div class="bg-white p-4 rounded-lg border border-amber-100">
-          <p class="font-semibold text-slate-900 mb-2">Step 1: Enable Developer Options</p>
-          <ol class="list-decimal ml-5 space-y-1">
-            <li>Open <strong>Settings</strong> on your Android phone</li>
-            <li>Go to <strong>About Phone</strong> (usually at the bottom)</li>
-            <li>Find <strong>Build Number</strong> (might be under "Software Information")</li>
-            <li>Tap <strong>Build Number</strong> 7 times quickly</li>
-            <li>You'll see "You are now a developer!" message</li>
-          </ol>
+      <section class="space-y-6">
+        <div class="flex items-center gap-3">
+          <span class="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white font-bold">1</span>
+          <h2 class="text-2xl font-bold text-slate-800">Setup Your Phone</h2>
         </div>
 
-        <div class="bg-white p-4 rounded-lg border border-amber-100">
-          <p class="font-semibold text-slate-900 mb-2">Step 2: Turn On USB Debugging</p>
-          <ol class="list-decimal ml-5 space-y-1">
-            <li>Go back to main <strong>Settings</strong></li>
-            <li>Look for <strong>Developer Options</strong> (near bottom or in System)</li>
-            <li>Find <strong>USB Debugging</strong> and toggle it <strong>ON</strong></li>
-            <li>Confirm "Allow USB debugging" if prompted</li>
-          </ol>
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 space-y-6 shadow-sm">
+          <div class="space-y-4">
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm">
+              <p class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <span>📱</span> A. Enable Developer Options
+              </p>
+              <ol class="list-decimal ml-5 text-sm text-slate-700 space-y-1">
+                <li>Open <strong>Settings</strong> > <strong>About Phone</strong></li>
+                <li>Find <strong>Build Number</strong> (Software Info)</li>
+                <li>Tap <strong>Build Number</strong> 7 times quickly</li>
+                <li>You'll see "You are now a developer!"</li>
+              </ol>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm">
+              <p class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <span>🔌</span> B. Turn On USB Debugging
+              </p>
+              <ol class="list-decimal ml-5 text-sm text-slate-700 space-y-1">
+                <li>Go back to <strong>Settings</strong> > <strong>System</strong></li>
+                <li>Open <strong>Developer Options</strong></li>
+                <li>Toggle <strong>USB Debugging</strong> to <strong>ON</strong></li>
+              </ol>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-amber-100 shadow-sm">
+              <p class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <span>🤝</span> C. Connect & Authorize
+              </p>
+              <p class="text-xs text-slate-600 mb-2 italic">Connect via USB cable now.</p>
+              <ol class="list-decimal ml-5 text-sm text-slate-700 space-y-1">
+                <li>Watch your phone for a popup</li>
+                <li>Check <strong>"Always allow from this computer"</strong></li>
+                <li>Tap <strong>OK</strong></li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-amber-200">
+            <p class="font-bold text-xs uppercase tracking-widest text-amber-700 mb-2">Troubleshooting</p>
+            <ul class="text-xs text-amber-900 space-y-1 opacity-80">
+              <li>• Use a high-quality data cable</li>
+              <li>• Set USB mode to "File Transfer"</li>
+              <li>• Close other ADB apps (like Android Studio)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="space-y-6">
+        <div class="flex items-center gap-3">
+          <span class="flex items-center justify-center w-10 h-10 rounded-full bg-blue-600 text-white font-bold">2</span>
+          <h2 class="text-2xl font-bold text-slate-800">Grant Permission</h2>
         </div>
 
-        <div class="bg-white p-4 rounded-lg border border-amber-100">
-          <p class="font-semibold text-slate-900 mb-2">Step 3: Connect & Authorize</p>
-          <ol class="list-decimal ml-5 space-y-1">
-            <li>Plug your phone into your computer with a USB cable</li>
-            <li>Click the <strong>"Connect Android Device"</strong> button above</li>
-            <li>Select your device from the popup</li>
-            <li><strong>Important:</strong> Look at your phone screen! A popup will ask to "Allow USB debugging"</li>
-            <li>Check "Always allow from this computer" and tap <strong>OK</strong></li>
-          </ol>
-        </div>
-      </div>
+        <div class="bg-white p-8 rounded-2xl shadow-xl ring-1 ring-slate-200 space-y-6">
+          <div class="text-center pb-4">
+            <button id="connectBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-8 rounded-2xl transition-all shadow-lg hover:shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Connect Android Device
+            </button>
+            <p class="text-xs text-slate-400 mt-4">Make sure you are using Chrome, Edge, or Brave</p>
+          </div>
 
-      <div class="border-t border-amber-200 pt-4 space-y-2 text-sm">
-        <p class="font-semibold text-slate-900">Troubleshooting:</p>
-        <ul class="space-y-1 text-slate-600">
-          <li>🔌 <strong>Connection failed?</strong> Try a different USB cable or USB port</li>
-          <li>📱 <strong>Device not showing up?</strong> Make sure USB mode is set to "File Transfer" or "MTP", not "Charging only"</li>
-          <li>🔧 <strong>Interface busy error?</strong> Open terminal/command prompt and run: <code class="bg-slate-200 px-2 py-1 rounded font-mono">adb kill-server</code></li>
-          <li>🔄 <strong>Still not working?</strong> Disconnect phone, restart both devices, and try again</li>
-        </ul>
-      </div>
+          <div class="text-left space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Terminal Output</label>
+              <span class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            </div>
+            <div id="console" class="bg-slate-900 text-green-400 font-mono text-sm p-5 rounded-xl h-80 overflow-y-auto leading-relaxed shadow-inner border border-slate-800"></div>
+          </div>
+        </div>
+      </section>
+
     </div>
-    
+  </div>
 
- <script type="module">
-  import { Adb, AdbDaemonTransport } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@2.1.0/+esm";
-  import { AdbDaemonWebUsbDeviceManager } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@2.1.0/+esm";
-  import AdbWebCredentialStore from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-credential-web@0.0.24/+esm";
+  <script type="module">
+    import { Adb, AdbDaemonTransport } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@2.1.0/+esm";
+    import { AdbDaemonWebUsbDeviceManager } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-daemon-webusb@2.1.0/+esm";
+    import AdbWebCredentialStore from "https://cdn.jsdelivr.net/npm/@yume-chan/adb-credential-web@0.0.24/+esm";
 
-  // --- CONFIG ---
-  const PACKAGE_NAME = "com.example.muse";
-  const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
-  const CMD = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
+    const PACKAGE_NAME = "com.example.muse";
+    const PERMISSION = "android.permission.WRITE_SECURE_SETTINGS";
+    const CMD = `pm grant ${PACKAGE_NAME} ${PERMISSION}`;
 
-  const consoleDiv = document.getElementById("console");
-  const connectBtn = document.getElementById("connectBtn");
+    const consoleDiv = document.getElementById("console");
+    const connectBtn = document.getElementById("connectBtn");
 
-  const log = (msg, isError = false) => {
-    const div = document.createElement("div");
-    div.textContent = `> ${msg}`;
-    if (isError) div.style.color = "#ff6b6b";
-    consoleDiv.appendChild(div);
-    consoleDiv.scrollTop = consoleDiv.scrollHeight;
-  };
+    const log = (msg, isError = false) => {
+      const div = document.createElement("div");
+      div.className = "mb-1";
+      div.innerHTML = `<span class="opacity-50 mr-2">$</span> <span class="${isError ? 'text-red-400' : ''}">${msg}</span>`;
+      consoleDiv.appendChild(div);
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    };
 
-  if (!navigator.usb) {
-    log("Error: WebUSB not supported. Use Chrome or Edge.", true);
-    connectBtn.disabled = true;
-  } else {
-    log("System Ready. Click Connect.");
-  }
-
-  const CredentialStore = new AdbWebCredentialStore("muse-focus-key");
-
-  connectBtn.onclick = async () => {
-    let adb = null;
-    try {
-      log("Opening device picker...");
+    if (!navigator.usb) {
+      log("Error: WebUSB not supported. Use Chrome or Edge.", true);
       connectBtn.disabled = true;
-
-      const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
-      if (!manager) {
-        log("ERROR: WebUSB not available", true);
-        connectBtn.disabled = false;
-        return;
-      }
-
-      log("Requesting device...");
-      const device = await manager.requestDevice();
-
-      if (!device) {
-        log("No device selected.");
-        connectBtn.disabled = false;
-        return;
-      }
-
-      log(`Device selected: ${device.serial}`);
-      log("Connecting...");
-
-      const connection = await device.connect();
-      log("Authenticating...");
-      log("⚠️ CHECK YOUR PHONE for USB debugging authorization!");
-
-      const transport = await AdbDaemonTransport.authenticate({
-        serial: device.serial,
-        connection,
-        credentialStore: CredentialStore,
-      });
-
-      adb = new Adb(transport);
-
-      log("✓ Connected successfully!");
-      log("---------------------------");
-      log(`Executing: ${CMD}`);
-
-      const output = await adb.subprocess.noneProtocol.spawnWaitText(CMD);
-
-      log("---------------------------");
-      if (output && output.trim()) {
-        log(`Output: ${output.trim()}`);
-      } else {
-        log("Command executed successfully");
-      }
-      log("---------------------------");
-      log("✓ SUCCESS! Permission granted.");
-      log("✓ You can now disconnect your device.");
-
-      alert("✓ Success! Permission granted.\n\nYou can disconnect your device and use the app now.");
-    } catch (err) {
-      console.error("Full error:", err);
-
-      if (err.name === "NotFoundError" || err.message?.includes("cancelled")) {
-        log("Device selection cancelled.", false);
-      } else if (err.message?.includes("claim") || err.message?.includes("interface")) {
-        log("ERROR: Device interface is busy!", true);
-        log("Solutions:", false);
-        log("1. Run 'adb kill-server' in terminal", false);
-        log("2. Close other ADB tools", false);
-        log("3. Disconnect and reconnect device", false);
-      } else if (err.message?.includes("not authorized") || err.message?.includes("unauthorized")) {
-        log("ERROR: Device not authorized!", true);
-        log("Solution: Check your phone for USB debugging prompt and tap 'Allow'", false);
-      } else {
-        log(`ERROR: ${err.message || String(err)}`, true);
-      }
-    } finally {
-      if (adb) {
-        try {
-          await adb.close();
-          log("Connection closed.");
-        } catch (e) {
-          // Ignore
-        }
-      }
-      connectBtn.disabled = false;
+    } else {
+      log("System ready. Connect phone and click the blue button.");
     }
-  };
-</script>
 
+    const CredentialStore = new AdbWebCredentialStore("muse-focus-key");
 
+    connectBtn.onclick = async () => {
+      let adb = null;
+      try {
+        log("Opening device picker...");
+        connectBtn.disabled = true;
 
+        const manager = AdbDaemonWebUsbDeviceManager.BROWSER;
+        if (!manager) {
+          log("ERROR: WebUSB not available", true);
+          connectBtn.disabled = false;
+          return;
+        }
+
+        const device = await manager.requestDevice();
+        if (!device) {
+          log("No device selected.");
+          connectBtn.disabled = false;
+          return;
+        }
+
+        log(`Device selected: ${device.serial}`);
+        log("Connecting...");
+
+        const connection = await device.connect();
+        log("Authenticating...");
+        log("⚠️ IMPORTANT: Watch phone for Authorization popup!");
+
+        const transport = await AdbDaemonTransport.authenticate({
+          serial: device.serial,
+          connection,
+          credentialStore: CredentialStore,
+        });
+
+        adb = new Adb(transport);
+
+        log("✓ Connected!");
+        log(`Running: ${CMD}`);
+
+        const output = await adb.subprocess.noneProtocol.spawnWaitText(CMD);
+
+        if (output && output.trim()) {
+          log(`Result: ${output.trim()}`);
+        } else {
+          log("✓ Permission granted successfully.");
+        }
+        
+        log("---------------------------");
+        log("✓ SUCCESS! You can disconnect now.");
+        alert("✓ Success! Permission granted.\n\nYou can now disconnect your device.");
+
+      } catch (err) {
+        console.error("Full error:", err);
+        if (err.name === "NotFoundError" || err.message?.includes("cancelled")) {
+          log("Selection cancelled.", false);
+        } else if (err.message?.includes("claim") || err.message?.includes("interface")) {
+          log("ERROR: Device busy!", true);
+          log("Try running 'adb kill-server' on your PC or unplug/replug.");
+        } else if (err.message?.includes("not authorized")) {
+          log("ERROR: Unauthorized!", true);
+          log("Check phone and 'Always allow'.");
+        } else {
+          log(`ERROR: ${err.message || String(err)}`, true);
+        }
+      } finally {
+        if (adb) {
+          try { await adb.close(); log("Connection closed."); } catch (e) {}
+        }
+        connectBtn.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
