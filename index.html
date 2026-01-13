@@ -24,12 +24,56 @@
       </div>
     </div>
 
-    <div class="text-center text-sm text-slate-500 space-y-2 mt-4">
-      <p>⚠️ Make sure USB debugging is enabled on your device</p>
-      <p>💡 Accept the USB debugging prompt on your phone</p>
-      <p>🔧 If it fails, run <code class="bg-slate-200 px-2 py-1 rounded">adb kill-server</code> in terminal</p>
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-6 space-y-4">
+      <h2 class="text-lg font-bold text-amber-900 flex items-center gap-2">
+        <span>⚠️</span> First Time Setup: Enable USB Debugging
+      </h2>
+      
+      <div class="text-sm text-slate-700 space-y-3">
+        <div class="bg-white p-4 rounded-lg border border-amber-100">
+          <p class="font-semibold text-slate-900 mb-2">Step 1: Enable Developer Options</p>
+          <ol class="list-decimal ml-5 space-y-1">
+            <li>Open <strong>Settings</strong> on your Android phone</li>
+            <li>Go to <strong>About Phone</strong> (usually at the bottom)</li>
+            <li>Find <strong>Build Number</strong> (might be under "Software Information")</li>
+            <li>Tap <strong>Build Number</strong> 7 times quickly</li>
+            <li>You'll see "You are now a developer!" message</li>
+          </ol>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-amber-100">
+          <p class="font-semibold text-slate-900 mb-2">Step 2: Turn On USB Debugging</p>
+          <ol class="list-decimal ml-5 space-y-1">
+            <li>Go back to main <strong>Settings</strong></li>
+            <li>Look for <strong>Developer Options</strong> (near bottom or in System)</li>
+            <li>Find <strong>USB Debugging</strong> and toggle it <strong>ON</strong></li>
+            <li>Confirm "Allow USB debugging" if prompted</li>
+          </ol>
+        </div>
+
+        <div class="bg-white p-4 rounded-lg border border-amber-100">
+          <p class="font-semibold text-slate-900 mb-2">Step 3: Connect & Authorize</p>
+          <ol class="list-decimal ml-5 space-y-1">
+            <li>Plug your phone into your computer with a USB cable</li>
+            <li>Click the <strong>"Connect Android Device"</strong> button above</li>
+            <li>Select your device from the popup</li>
+            <li><strong>Important:</strong> Look at your phone screen! A popup will ask to "Allow USB debugging"</li>
+            <li>Check "Always allow from this computer" and tap <strong>OK</strong></li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="border-t border-amber-200 pt-4 space-y-2 text-sm">
+        <p class="font-semibold text-slate-900">Troubleshooting:</p>
+        <ul class="space-y-1 text-slate-600">
+          <li>🔌 <strong>Connection failed?</strong> Try a different USB cable or USB port</li>
+          <li>📱 <strong>Device not showing up?</strong> Make sure USB mode is set to "File Transfer" or "MTP", not "Charging only"</li>
+          <li>🔧 <strong>Interface busy error?</strong> Open terminal/command prompt and run: <code class="bg-slate-200 px-2 py-1 rounded font-mono">adb kill-server</code></li>
+          <li>🔄 <strong>Still not working?</strong> Disconnect phone, restart both devices, and try again</li>
+        </ul>
+      </div>
     </div>
-  </div>
+    
 
  <script type="module">
   import { Adb, AdbDaemonTransport } from "https://cdn.jsdelivr.net/npm/@yume-chan/adb@2.1.0/+esm";
@@ -145,5 +189,6 @@
     }
   };
 </script>
+
 
 
